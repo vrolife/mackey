@@ -1,9 +1,12 @@
 #include <assert.h>
 #include <dlfcn.h>
+#include <link.h>
+#include <sys/mman.h>
 
 #include <string>
 #include <map>
 #include <mutex>
+#include <filesystem>
 
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -14,6 +17,8 @@
 
 // #define LOG printf
 #define LOG(...)
+
+namespace fs = std::filesystem;
 
 struct _MacKey {
     GObject parent;
@@ -34,6 +39,50 @@ static GumInvocationListener* listener;
 static void* XNextEvent_ptr;
 static void* xcb_wait_for_event_ptr;
 static void* xcb_poll_for_event_ptr;
+
+void remove_chrome_ntp_promo() 
+{
+    FILE* fp = fopen("/proc/self/maps", "rb");
+    if (fp == nullptr) {
+        return;
+    }
+
+    char line[BUFSIZ];
+
+    while (fgets(line, sizeof(line), fp) != nullptr) 
+    {
+        uintptr_t begin { 0 };
+        uintptr_t end { 0 };
+        char r { 0 };
+        char w { 0 };
+        char x { 0 };
+        char p { 0 };
+        uintptr_t offset { 0 };
+        int major { 0 };
+        int minor { 0 };
+        unsigned long inode { 0 };
+        char name[BUFSIZ];
+
+        if (sscanf(line, "%" SCNxPTR "-%" SCNxPTR " %c%c%c%c %" SCNxPTR " %x:%x %lu %s", &begin, &end, &r, &w, &x, &p, &offset, &major, &minor, &inode, name) > 10) 
+        {
+            fs::path path{name};
+            if (path.filename() == "chrome")
+            {
+                auto* p = memmem(reinterpret_cast<void*>(begin), end - begin, "/async/newtab_promos", 20);
+                if (p) {
+                    void* page = reinterpret_cast<void*>(reinterpret_cast<size_t>(p) & (~0xFFF));
+                    size_t size = sysconf(_SC_PAGE_SIZE) * 2;
+                    if (mprotect(page, size, PROT_READ | PROT_WRITE) != -1) {
+                        memcpy(p, "/fxck", 6);
+                        mprotect(page, size, PROT_READ);
+                    }
+                }
+            }
+        }
+    }
+
+    fclose(fp);
+}
 
 __attribute__((constructor))
 static void load() 
@@ -83,6 +132,9 @@ static void load()
     }
 
     gum_interceptor_end_transaction (interceptor);
+
+    // disable chrome ad
+    remove_chrome_ntp_promo();
 }
 
 static std::mutex syms_lock;
@@ -138,6 +190,7 @@ static void translate_xcb_key_press_post(xcb_connection_t* conn, xcb_key_press_e
                 case XK_t:
                 case XK_w:
                 case XK_q:
+                case XK_f:
                     key->state = MOD_CTRL;
                     break;
             }
