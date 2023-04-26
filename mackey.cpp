@@ -15,18 +15,18 @@
 // #define LOG printf
 #define LOG(...)
 
-struct _AccelHook {
+struct _MacKey {
     GObject parent;
 };
 
-typedef struct _AccelHook AccelHook;
+typedef struct _MacKey MacKey;
 
-static void accel_hook_iface_init (gpointer g_iface, gpointer iface_data);
+static void mackey_iface_init (gpointer g_iface, gpointer iface_data);
 
-#define ACCEL_HOOK_LISTENER (accel_hook_get_type())
-G_DECLARE_FINAL_TYPE(AccelHook, accel_hook, ACCELHOOK, LISTENER, GObject)
-G_DEFINE_TYPE_EXTENDED(AccelHook, accel_hook, G_TYPE_OBJECT, 0, 
-    G_IMPLEMENT_INTERFACE(GUM_TYPE_INVOCATION_LISTENER, accel_hook_iface_init))
+#define MACKEY_LISTENER (mackey_get_type())
+G_DECLARE_FINAL_TYPE(MacKey, mackey, ACCELHOOK, LISTENER, GObject)
+G_DEFINE_TYPE_EXTENDED(MacKey, mackey, G_TYPE_OBJECT, 0, 
+    G_IMPLEMENT_INTERFACE(GUM_TYPE_INVOCATION_LISTENER, mackey_iface_init))
 
 static GumInterceptor* interceptor;
 static GumInvocationListener* listener;
@@ -40,7 +40,7 @@ static void load()
 {
     gum_init_embedded();
     interceptor = gum_interceptor_obtain();
-    listener = reinterpret_cast<GumInvocationListener*>(g_object_new(ACCEL_HOOK_LISTENER, nullptr));
+    listener = reinterpret_cast<GumInvocationListener*>(g_object_new(MACKEY_LISTENER, nullptr));
     gum_interceptor_begin_transaction (interceptor);
     
     {
@@ -154,9 +154,9 @@ static void translate_xcb_key_press_post(xcb_connection_t* conn, xcb_key_press_e
 
 
 static void
-accel_hook_on_enter (GumInvocationListener * listener, GumInvocationContext * ic)
+mackey_on_enter (GumInvocationListener * listener, GumInvocationContext * ic)
 {
-    AccelHook* self = ACCELHOOK_LISTENER (listener);
+    MacKey* self = ACCELHOOK_LISTENER (listener);
     void* data = GUM_IC_GET_FUNC_DATA (ic, void*);
     if (data == xcb_wait_for_event_ptr) 
     {
@@ -171,10 +171,10 @@ accel_hook_on_enter (GumInvocationListener * listener, GumInvocationContext * ic
 }
 
 static void
-accel_hook_on_leave (GumInvocationListener * listener,
+mackey_on_leave (GumInvocationListener * listener,
                            GumInvocationContext * ic)
 {
-    AccelHook* self = ACCELHOOK_LISTENER (listener);
+    MacKey* self = ACCELHOOK_LISTENER (listener);
     void* data = GUM_IC_GET_FUNC_DATA (ic, void*);
     if (data == XNextEvent_ptr)
     {
@@ -206,21 +206,21 @@ accel_hook_on_leave (GumInvocationListener * listener,
 }
 
 static void
-accel_hook_class_init (AccelHookClass * klass)
+mackey_class_init (MacKeyClass * klass)
 {
 }
 
 static void
-accel_hook_iface_init (gpointer g_iface,
+mackey_iface_init (gpointer g_iface,
                              gpointer iface_data)
 {
   auto* iface = reinterpret_cast<GumInvocationListenerInterface*>(g_iface);
 
-  iface->on_enter = accel_hook_on_enter;
-  iface->on_leave = accel_hook_on_leave;
+  iface->on_enter = mackey_on_enter;
+  iface->on_leave = mackey_on_leave;
 }
 
 static void
-accel_hook_init (AccelHook * self)
+mackey_init (MacKey * self)
 {
 }

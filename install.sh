@@ -5,8 +5,8 @@ if test $(id -u) -ne 0; then
     exit 1
 fi
 
-LIB=$PWD/cmake-build/libgtkmac.so
-DST=/home/$SUDO_USER/.config/gtk-3.0/libgtkmac.so
+LIB=$PWD/cmake-build/libmackey.so
+DST=/home/$SUDO_USER/.config/gtk-3.0/libmackey.so
 
 cp $LIB $DST
 
